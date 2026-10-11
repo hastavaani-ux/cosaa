@@ -1,0 +1,436 @@
+﻿Static IP > Users and Groups > Admin privileges > DNS > ADDS > Join client to domain > OUs > GPO > DHCP > IIS > FTP > NFS > DFS > Windows Server Backup > FSRM > SSH > RDP > NIC Teaming
+Static IP
+Steps:
+Set the IP
+1. [SERVER] Win+R > ncpa.cpl
+2. [SERVER] Select the interface > right-click > Properties
+3. [SERVER] Internet Protocol Version 4 (TCP/IPv4) > Properties
+4. [SERVER] Use the following IP address > IP address: <192.168.37.128>
+5. [SERVER] Default gateway: <192.168.37.2>
+6. [SERVER] Use the following DNS server addresses > Preferred DNS server: <192.168.37.128>
+7. [SERVER] Alternate DNS server: <192.168.37.2>
+8. [SERVER] OK > Close
+Rename the computer
+9. [SERVER] [FIXED] Settings > System > About > Advanced system settings > Computer Name tab > Change
+10. [SERVER] Computer name: <master> > OK
+11. [SERVER] Restart when asked [RESTART]
+Verify: The IP, gateway, DNS servers and Host Name master are shown.
+ipconfig /all
+Users and Groups
+Steps:
+Create a user
+1. [SERVER] Server Manager > Tools > Computer Management
+2. [SERVER] Local Users and Groups > right-click Users > New User
+3. [SERVER] User name: <natasha> > Password: <password> > Create > Close
+Create a group
+4. [SERVER] Server Manager > Tools > Computer Management > Local Users and Groups
+5. [SERVER] Right-click Groups > New Group
+6. [SERVER] Group name: <group name> > Create > Close
+Verify: The new user and group appear under Users and Groups.
+Admin privileges
+Prerequisites: The user natasha exists (Users and Groups).
+Steps:
+1. [SERVER] Server Manager > Tools > Computer Management > Local Users and Groups > Users
+2. [SERVER] Double-click <natasha> > Member Of tab > Add
+3. [SERVER] Type Administrators > Check Names > OK
+4. [SERVER] Apply > OK
+Verify: Administrators is listed in the Member Of tab of <natasha>.
+DNS
+Prerequisites: Static IP set and computer renamed to master.
+Steps:
+Install
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+2. [SERVER] Tick DNS Server
+3. [SERVER] Tick Restart the destination server automatically if required > Install [RESTART]
+Forward zone
+4. [SERVER] Server Manager > Tools > DNS
+5. [SERVER] Right-click <master> (machine name) > New Zone > Next
+6. [SERVER] Primary zone > Next
+7. [SERVER] Forward lookup zone > Next
+8. [SERVER] Zone name: <itiss.com> > Next
+9. [SERVER] Create a new file with the default filename > Next
+10. [SERVER] Do not allow dynamic updates > Next > Finish
+Create A records
+11. [SERVER] Forward Lookup Zones > right-click <itiss.com> > New Host (A or AAAA)
+12. [SERVER] [FIXED] Name: <master> > IP address: <192.168.37.128> > Add Host > OK (source gives no record name; both nslookup tests need this record and the next one)
+13. [SERVER] [FIXED] Right-click <itiss.com> > New Host (A or AAAA) > leave Name blank > IP address: <192.168.37.128> > Add Host > Done
+Reverse zone
+14. [SERVER] Right-click <master> > New Zone > Next
+15. [SERVER] Primary zone > Next
+16. [SERVER] Reverse lookup zone > Next
+17. [SERVER] IPv4 Reverse Lookup Zone > Next
+18. [SERVER] Network ID: <192.168.37> > Next
+19. [SERVER] Create a new file with the default filename > Next
+20. [SERVER] Do not allow dynamic updates > Next > Finish
+Create PTR record
+21. [SERVER] Reverse Lookup Zones > right-click the new zone > New Pointer (PTR)
+22. [SERVER] Host IP address: <192.168.37.128>
+23. [SERVER] Host name: <master.itiss.com>. (dot at the end) > OK
+Verify: Both commands return <192.168.37.128>.
+nslookup <itiss.com>
+nslookup <master.itiss.com>
+ADDS
+Prerequisites: Static IP set, DNS installed, computer named master.
+Steps:
+Install the role
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+2. [SERVER] Tick Active Directory Domain Services > Add Features
+3. [SERVER] Tick Restart the destination server automatically if required > Install [RESTART]
+Promote to domain controller
+4. [SERVER] Server Manager > yellow warning flag > more > Promote this server to a domain controller
+5. [SERVER] Add a new forest > Root domain name: <itiss.com> > Next
+6. [SERVER] Forest functional level: Windows Server 2022
+7. [SERVER] Domain functional level: Windows Server 2022
+8. [SERVER] Keep DNS server ticked > set the DSRM password: <password> > Next
+9. [SERVER] DNS Options: no parent zone, so skip DNS delegation. Do not select anything > Next
+10. [SERVER] NetBIOS name: keep the default > Next
+11. [SERVER] Next (until Install) > Install [RESTART]
+12. [SERVER] [INCOMPLETE IN SOURCE] File 2 line "User Distributed file System Replication ... reboot ... the default logon destination" is unclear.
+13. [SERVER] [FIXED] Promotion removes local users and groups. From now on create users and groups in Active Directory Users and Computers (see OUs).
+Verify: Server Manager shows AD DS and DNS; Server Manager > Tools > Active Directory Users and Computers opens.
+Join client to domain
+Prerequisites: ADDS done. The client has an IP on the same network and its DNS is <192.168.37.128> [FIXED].
+Steps:
+Create the SRV record
+1. [SERVER] Server Manager > Tools > DNS > Forward Lookup Zones
+2. [SERVER] Right-click <itiss.com> > New Domain > _msdcs > OK (if _msdcs already exists, skip) [FIXED]
+3. [SERVER] Right-click _msdcs > New Domain > dc > OK (if dc already exists, skip) [FIXED]
+4. [SERVER] Right-click dc > Other New Records > Service Location (SRV) > Create Record
+5. [SERVER] Service: _ldap
+6. [SERVER] Protocol: _tcp
+7. [SERVER] Port number: 389
+8. [SERVER] Host offering this service: <itiss.com>. (dot at the end)
+9. [SERVER] OK > Done
+Join the client
+10. [CLIENT] Settings > System > About > Advanced system settings
+11. [CLIENT] Computer Name tab > Change
+12. [CLIENT] Member of: Domain > <itiss.com> > OK
+13. [CLIENT] Enter the domain username and password > OK
+14. [CLIENT] Restart [RESTART]
+Verify: A "Welcome to the itiss.com domain" message appears, and a domain user can log in after the restart.
+OUs
+Steps:
+Create an OU
+1. [SERVER] Server Manager > Tools > Active Directory Users and Computers
+2. [SERVER] Expand <itiss.com> > right-click Domain Controllers > New > Organizational Unit
+3. [SERVER] Name: <OU name>
+4. [SERVER] Keep Protect container from accidental deletion ticked > OK
+5. [SERVER] Right-click the OU > New > User (or Organizational Unit) to add users or OUs
+6. [SERVER] [FIXED] Re-create the user <natasha> here: right-click the OU > New > User (local users were removed by the promotion)
+Delete a protected OU
+7. [SERVER] View > Advanced Features
+8. [SERVER] Right-click the OU > Properties > Object tab
+9. [SERVER] Untick Protect object from accidental deletion > OK
+10. [SERVER] Right-click the OU > Delete
+Install ADUC on the client
+11. [CLIENT] [FIXED] Open PowerShell as administrator and run:
+Add-WindowsCapability -Online -Name "Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0"
+Verify: The OU is listed under <itiss.com> in Active Directory Users and Computers.
+GPO
+Prerequisites: ADDS done and the client joined to the domain.
+Steps:
+Share the wallpaper folder
+1. [SERVER] Create a folder (example <C:\wallpaper>)
+2. [SERVER] Right-click the folder > Properties > Sharing > Advanced Sharing > Share this folder
+3. [SERVER] Permissions > Add > Domain Users > Allow Read only > OK > OK
+4. [SERVER] Copy the wallpaper image into the folder (example image.png)
+5. [SERVER] Note the network path:
+\\<master>\<share name>\image.png
+6. [CLIENT] Win+R > type the network path. The image must open.
+Wallpaper
+7. [SERVER] Win+R > gpmc.msc
+8. [SERVER] Right-click <itiss.com> > Create a GPO in this domain, and Link it here > Name: <GPO name> > OK
+9. [SERVER] Right-click the new GPO > Edit
+10. [SERVER] User Configuration > Policies > Administrative Templates > Desktop > Desktop
+11. [SERVER] Double-click Desktop Wallpaper > Enabled
+12. [SERVER] Wallpaper Name: the complete path up to the image, e.g. \\<master>\<share name>\image.png
+13. [SERVER] Apply > OK
+14. [SERVER] Open cmd and run:
+gpupdate /force
+15. [CLIENT] Log off and log in again
+Prevent changing the wallpaper
+16. [SERVER] Win+R > gpmc.msc > right-click the same GPO > Edit (or create a new GPO)
+17. [SERVER] User Configuration > Policies > Administrative Templates > Control Panel > Personalization
+18. [SERVER] Double-click Prevent changing desktop background > Enabled
+19. [SERVER] Apply > OK
+20. [SERVER] Open cmd and run:
+gpupdate /force
+Block Control Panel
+21. [SERVER] Win+R > gpmc.msc > right-click the same GPO > Edit (or create a new GPO)
+22. [SERVER] User Configuration > Policies > Administrative Templates > Control Panel
+23. [SERVER] Double-click Prohibit access to Control Panel and PC settings > Enabled
+24. [SERVER] Apply > OK
+25. [SERVER] Open cmd and run:
+gpupdate /force
+Removable media: deny all
+26. [SERVER] Win+R > gpmc.msc > right-click the same GPO > Edit (or create a new GPO)
+27. [SERVER] Computer Configuration > Policies > Administrative Templates > System > Removable Storage Access
+28. [SERVER] Double-click All Removable Storage classes: Deny all access > Enabled
+29. [SERVER] Apply > OK
+Password policy
+30. [SERVER] Win+R > gpmc.msc > right-click the same GPO > Edit (or create a new GPO)
+31. [SERVER] Computer Configuration > Policies > Windows Settings > Security Settings > Account Policies > Password Policy
+32. [SERVER] Minimum password length: 8 > OK
+33. [SERVER] Password must meet complexity requirements > Enabled > OK
+Account lockout policy (same GPO)
+34. [SERVER] Computer Configuration > Policies > Windows Settings > Security Settings > Account Policies > Account Lockout Policy
+35. [SERVER] Account lockout threshold: <number of invalid attempts> > OK
+36. [SERVER] Account lockout duration: <minutes> > OK
+37. [SERVER] Set any other lockout setting you need
+38. [SERVER] [FIXED] Open cmd and run (source has no refresh after the removable media, password and lockout policies):
+gpupdate /force
+39. [CLIENT] Log off and log in again
+Verify: [CLIENT] After log off and log in: the wallpaper is applied and cannot be changed, and Control Panel is blocked.
+If stuck: GPO not applying: run gpupdate /force on the server, log off and log in on the client, and check that the image path opens from the client (Win+R).
+DHCP
+Prerequisites: Static IP set. ADDS done (needed for AD authorization).
+Steps:
+Install
+1. [SERVER] Disable VMware DHCP [INCOMPLETE IN SOURCE] (no click path given)
+2. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+3. [SERVER] Tick DHCP Server > Install
+Authorize
+4. [SERVER] Server Manager > yellow warning flag > more > Complete DHCP configuration
+5. [SERVER] Next > AD authorization with Active Directory credentials > Commit > Close
+6. [SERVER] If AD authorization was skipped, authorize manually: Server Manager > Tools > DHCP > right-click the DHCP server name > Authorize > Refresh
+Create the scope
+7. [SERVER] Server Manager > Tools > DHCP > expand the server
+8. [SERVER] Right-click IPv4 > New Scope > Next
+9. [SERVER] Scope name: <scope name> > Next
+10. [SERVER] IP address range: <start IP> to <end IP> > Next
+11. [SERVER] Exclusions (if any) > Next
+12. [SERVER] Lease duration > Next
+13. [SERVER] Yes, I want to configure these options now > Next
+14. [SERVER] Router (Default Gateway): <192.168.37.2> > Add > Next
+15. [SERVER] Parent domain: <itiss.com>
+16. [SERVER] DNS servers: <192.168.37.128> (primary) and <192.168.37.2> (secondary) > Add > Next
+17. [SERVER] Yes, I want to activate this scope now > Next > Finish
+Client
+18. [CLIENT] Win+R > ncpa.cpl
+19. [CLIENT] Right-click the interface > Properties > Internet Protocol Version 4 (TCP/IPv4) > Properties
+20. [CLIENT] Change from static to automatic > OK > Apply
+Verify: The IPv4 scope shows a green tick; the client gets an IP from the pool.
+ipconfig /all
+IIS
+Prerequisites: The user natasha exists (re-created in OUs). DNS installed.
+Steps:
+Install
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+2. [SERVER] Tick Web Server (IIS) > Next (until Role Services)
+3. [SERVER] Tick Basic Authentication
+4. [SERVER] Tick Restart the destination server automatically if required > Install [RESTART]
+Default site and virtual directory
+5. [SERVER] Server Manager > Tools > Internet Information Services (IIS) Manager
+6. [SERVER] Expand <master> > Sites > Default Web Site
+7. [SERVER] Explore (right pane) = document root
+8. [SERVER] Bindings (right pane) = port and IP address
+9. [SERVER] View Virtual Directories (right pane) > Add Virtual Directory
+10. [SERVER] Alias: <alias name>
+11. [SERVER] Physical path: <folder where the website is stored>
+12. [SERVER] Connect as... [INCOMPLETE IN SOURCE] (no account given)
+13. [SERVER] OK
+Virtual hosting
+14. [SERVER] IIS Manager > <master> > right-click Sites > Add Website
+15. [SERVER] Site name: <site name>
+16. [SERVER] Physical path: <website folder>
+17. [SERVER] Host name: <FQDN>
+18. [SERVER] Connect as... [INCOMPLETE IN SOURCE] (no account given)
+19. [SERVER] OK
+20. [SERVER] Create a sample index.html in the website folder
+21. [SERVER] [FIXED] Server Manager > Tools > DNS > Forward Lookup Zones > right-click <itiss.com> > New Host (A or AAAA) > Name: <host part of FQDN> > IP address: <192.168.37.128> > Add Host (so the client can resolve the FQDN)
+Basic authentication
+22. [SERVER] Server Manager > Tools > Services > restart World Wide Web Publishing Service [RESTART]
+23. [SERVER] Create a folder inside the website folder
+24. [SERVER] Create a web page (index.html) inside that folder
+25. [SERVER] Right-click the folder > Properties > Security > Edit > Add > natasha > Full control > Apply > OK
+26. [SERVER] Right-click the folder > Properties > Sharing > Advanced Sharing > Share this folder > Permissions > Add > natasha > OK
+27. [SERVER] IIS Manager > under your website select that folder > Authentication
+28. [SERVER] Basic Authentication > Enable
+29. [SERVER] Anonymous Authentication > Disable
+30. [SERVER] IIS Manager > select <master> > Restart (right pane) [RESTART]
+Verify: [CLIENT] Browse to http://<192.168.37.128> (default site), http://<FQDN> (virtual host) and http://<192.168.37.128>/<folder> (asks for natasha's username and password).
+FTP
+Prerequisites: IIS role installed.
+Steps:
+Install
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+2. [SERVER] Web Server (IIS) > FTP Server > tick FTP Server and FTP Service > Install
+Configure
+3. [SERVER] [FIXED] Server Manager > Tools > Active Directory Users and Computers > right-click the OU > New > Group > <ftp group> (source says local group; Local Users and Groups is not available on a domain controller)
+4. [SERVER] [FIXED] Right-click the OU > New > User > <ftp username>
+5. [SERVER] [FIXED] Double-click the user > Member Of > Add > <ftp group> > OK
+6. [SERVER] Create a physical folder (example <C:\ftp>)
+7. [SERVER] Server Manager > Tools > Internet Information Services (IIS) Manager
+8. [SERVER] Right-click Sites > Add FTP Site
+9. [SERVER] FTP site name: <ftp site name>
+10. [SERVER] Physical path: the folder > Next
+11. [SERVER] Binding: IP address <192.168.37.128>
+12. [SERVER] SSL: No SSL > Next
+13. [SERVER] Authentication: Basic
+14. [SERVER] Authorization: Specified users > <ftp username>
+15. [SERVER] Permissions: Read and Write > Finish
+16. [SERVER] IIS Manager > click the server name <master> > FTP Firewall Support
+17. [SERVER] External IP Address of Firewall: <192.168.37.128> > Apply
+Client
+18. [CLIENT] Win+E > click the top address bar > type:
+ftp://<192.168.37.128>
+19. [CLIENT] Enter the username and password of the FTP user
+Firewall rules (only if the client cannot connect)
+20. [SERVER] Server Manager > Tools > Windows Defender Firewall with Advanced Security > Inbound Rules
+21. [SERVER] Disable the two existing rules: FTP Server (FTP Traffic-In) and FTP Server Passive (FTP Passive Traffic-In)
+22. [SERVER] New Rule > Port > TCP > Specific local ports: 21 > Allow the connection > Next > Next > Name > Finish
+23. [SERVER] New Rule (2nd) > Port > TCP > Specific local ports: 1025-65535 > Allow the connection > Next > Next > Name > Finish
+FTP isolation
+24. [SERVER] [INCOMPLETE IN SOURCE] The FTP Isolation steps are empty in file 1.
+Verify: [CLIENT] ftp://<192.168.37.128> opens and the FTP user can read and write files.
+If stuck: FTP not connecting: do the firewall rules above (disable the two default inbound FTP rules, then add port 21 and port range 1025-65535).
+NFS
+Steps:
+Install
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+2. [SERVER] File and Storage Services > File and iSCSI Services > tick Server for NFS
+3. [SERVER] Next (until Features) > tick Client for NFS > Install
+Add a new disk to the VM
+4. [SERVER] Power off the VM
+5. [SERVER] VM Settings > Add > Hard Disk
+6. [SERVER] NVMe > 10 GB > Store as a single file > Finish
+7. [SERVER] Power on the VM [RESTART]
+Create a partition
+8. [SERVER] Server Manager > Tools > Computer Management > Storage > Disk Management
+9. [SERVER] Right-click Disk 1 > Initialize Disk > GPT > OK
+10. [SERVER] Right-click the unallocated space > New Simple Volume
+11. [SERVER] Size: the entire disk > Next
+12. [SERVER] Assign a drive letter > Next
+13. [SERVER] File system: NTFS > volume label > Finish
+Create the NFS share
+14. [SERVER] Server Manager > File and Storage Services > Shares > Tasks > New Share
+15. [SERVER] NFS Share - Quick > Next
+16. [SERVER] Select the new drive > Type a custom path > Browse > select the new drive
+17. [SERVER] Make New Folder > select it > Select Folder > Next
+18. [SERVER] Share name (alias): <nfs_alias>
+19. [SERVER] Note the remote path: <master>:/<nfs_alias> > Next
+20. [SERVER] Authentication: No server authentication
+21. [SERVER] Tick Enable unmapped user access > Allow unmapped user access by UID/GID > Next
+22. [SERVER] Add > All Machines > Share permissions: Read/Write > Add
+23. [SERVER] Next > Create > Close
+Windows client
+24. [CLIENT] File Explorer > Network > turn on network discovery and file sharing
+25. [CLIENT] Start > search "Windows features" > Turn Windows features on or off
+26. [CLIENT] Tick Services for NFS > Client for NFS > OK
+27. [CLIENT] File Explorer > Network > open <master> > <nfs_alias> > right-click > Map network drive > Finish
+28. [CLIENT] [FIXED] OR in PowerShell (file 1 shows the Linux syntax here):
+mount -o anon \\<192.168.37.128>\<nfs_alias> Z:
+Linux client
+29. [CLIENT] Terminal:
+mount -t nfs <192.168.37.128>:/<nfs_alias> /mnt
+Verify: The mapped drive (or /mnt on Linux) opens and shows the shared files.
+DFS
+Prerequisites: ADDS done (domain-based namespace).
+Steps:
+Install
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+2. [SERVER] File and Storage Services > File and iSCSI Services > tick DFS Namespaces and DFS Replication > Install
+Shared folder
+3. [SERVER] Create a physical folder (example <C:\dir_name>)
+4. [SERVER] Right-click the folder > Properties > Sharing > Advanced Sharing > Share this folder
+5. [SERVER] Permissions > Add > Domain Users > Allow Read and Change (read/write) > OK > OK
+Create the namespace
+6. [SERVER] Server Manager > Tools > DFS Management
+7. [SERVER] Right-click Namespaces > New Namespace
+8. [SERVER] Server: <MASTER> > Next
+9. [SERVER] Name: <dfs_ns>
+10. [SERVER] [FIXED] Edit Settings > Local path of shared folder: C:\<dir_name>\dfs_ns (file 1 lists this after the namespace steps; it is done here in the wizard)
+11. [SERVER] Permissions: Use custom permissions > Customize > Domain Users > Full Control > OK > Apply > OK
+12. [SERVER] Next > select Domain-based namespace > Next > Create > Close
+Create links under the namespace
+13. [SERVER] DFS Management > select your namespace (\\<itiss.com>\<dfs_ns>)
+14. [SERVER] Right-click > New Folder
+15. [SERVER] Name of the link (folder): <link name>
+16. [SERVER] Add > Browse > select the target folder > OK > OK
+17. [SERVER] For a replication group: create a new separate link for another folder
+Client
+18. [CLIENT] Win+R > type:
+\\<itiss.com>\<dfs_ns>
+Verify: [CLIENT] The namespace opens and shows the link folders.
+Windows Server Backup
+Prerequisites: A separate machine as backup server (example <WIN_CLIENT>) in the same network, with a folder (example <backup_server>) shared in Read/Write mode using NFS, DFS or regular file sharing.
+Steps:
+Install
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Features)
+2. [SERVER] Tick Windows Server Backup > Next > Install
+Backup
+3. [SERVER] Server Manager > Tools > Windows Server Backup
+4. [SERVER] Local Backup > Backup Once (right pane)
+5. [SERVER] Custom > Next
+6. [SERVER] [FIXED] Add Items > select the items to back up > OK > Next (the wizard cannot continue without items)
+7. [SERVER] Specify destination type: Remote shared folder > Next
+8. [SERVER] Location (destination path):
+\\<WIN_CLIENT>\<backup_server>
+9. [SERVER] Access control: Inherit > Next > Backup
+Recovery
+10. [SERVER] Server Manager > Tools > Windows Server Backup > right-click Local Backup > Recover
+11. [SERVER] A backup stored on another location > Next
+12. [SERVER] Remote shared folder > Next
+13. [SERVER] Location of the stored backup:
+\\<WIN_CLIENT>\<backup_server>
+14. [SERVER] Select the backup date and time > Next
+15. [SERVER] Recovery type: Files and folders > Next
+16. [SERVER] Select the items to recover > Next
+17. [SERVER] Specify the recovery location (original or another location) > Next > Recover
+Verify: The backup status shows Completed; recovered items appear in the chosen location.
+FSRM
+Prerequisites: A shared folder already exists.
+Steps:
+1. [SERVER] Server Manager > Manage > Add Roles and Features > Next (until Server Roles)
+2. [SERVER] File and Storage Services > File and iSCSI Services > tick File Server Resource Manager > Install
+3. [SERVER] Server Manager > Tools > File Server Resource Manager
+4. [SERVER] Expand File Screening Management > right-click File Screens > Create File Screen
+5. [SERVER] File screen path: <path of the already shared folder>
+6. [SERVER] Choose the policy (template) > Create
+Verify: The file screen is listed under File Screens.
+SSH
+Prerequisites: Static IP set.
+Steps:
+1. [SERVER] [FIXED] Install OpenSSH Server first. Open PowerShell as administrator and run:
+Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
+2. [SERVER] Server Manager > Tools > Services
+3. [SERVER] Right-click OpenSSH SSH Server > Properties
+4. [SERVER] Startup type: Automatic > Apply
+5. [SERVER] [FIXED] Start > OK (the service is not running until started)
+6. [SERVER] Port 22 is set in the config file:
+C:\ProgramData\ssh\sshd_config
+Verify: [CLIENT] Connect from the client:
+ssh <username>@<192.168.37.128>
+RDP
+Steps:
+1. [SERVER] Server Manager > Local Server
+2. [SERVER] Click Remote Desktop: Disabled
+3. [SERVER] Select Allow remote connections to this computer
+4. [SERVER] Apply > OK
+Verify: [CLIENT] Win+R > mstsc > <192.168.37.128> > Connect.
+NIC Teaming
+Prerequisites: Note the IP address and DNS of the old Ethernet adapter first. This section changes the IP settings, so do it last.
+Steps:
+Add a second NIC
+1. [SERVER] VM Settings > Add > Network Adapter > Finish
+2. [SERVER] Refresh Server Manager
+Set both adapters to DHCP
+3. [SERVER] Win+R > ncpa.cpl
+4. [SERVER] Old Ethernet > Properties > IPv4 > Properties > change from static to automatic (DHCP)
+5. [SERVER] New Ethernet > Properties > IPv4 > Properties > automatic (DHCP)
+Create the team
+6. [SERVER] Server Manager > Local Server > NIC Teaming: click Disabled
+7. [SERVER] Tasks > New Team
+8. [SERVER] Team name: <team name> > tick both interfaces
+9. [SERVER] Additional properties > Teaming mode: Switch Independent
+10. [SERVER] Load balancing mode: Address Hash > OK
+Set the IP on the team
+11. [SERVER] Refresh Server Manager
+12. [SERVER] Win+R > ncpa.cpl > open the team adapter (virtual NIC) > Properties > IPv4 > Properties
+13. [SERVER] IP address: the IP of the old Ethernet adapter <192.168.37.128>
+14. [SERVER] [FIXED] Default gateway: <192.168.37.2> (lost when the adapters were set to DHCP)
+15. [SERVER] DNS: <192.168.37.128> (primary) and <192.168.37.2> (secondary)
+16. [SERVER] OK
+Verify: NIC Teaming shows the team as Active and the team adapter has the static IP.
+ipconfig /all
+Page  of
