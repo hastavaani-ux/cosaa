@@ -1,0 +1,146 @@
+﻿CentOS Stream 9 — Disk Partitioning
+Disk: /dev/nvme0n1
+Important: Confirm the disk and partition numbers using lsblk before making changes. Incorrect partitioning can cause data loss.
+1. Standard Partitioning (XFS)
+Create a Partition
+fdisk /dev/nvme0n1
+p        # Print partition table
+n        # New partition
+p        # Primary (if prompted)
+# Enter partition number, start sector and size (+1G)
+w        # Write changes
+Format and Mount
+partprobe /dev/nvme0n1
+mkfs.xfs /dev/nvme0n1p4
+mkdir -p /data1
+mount /dev/nvme0n1p4 /data1
+df -hT
+Permanent Mount
+vim /etc/fstab
+Add:
+/dev/nvme0n1p4 /data1 xfs defaults 0 0
+Verify:
+systemctl daemon-reload
+mount -a
+df -hT
+Delete a Partition
+umount /data1
+vim /etc/fstab   # Remove its entry
+fdisk /dev/nvme0n1
+p                # Identify the correct partition
+d                # Delete the partition
+w                # Save changes
+partprobe /dev/nvme0n1
+Note: Back up data before deleting a partition. Use umount /data1, not the partition device, to unmount it.
+2. Extended and Logical Partitioning (MBR)
+Extended partitions apply to MBR partition tables only. GPT disks do not support extended or logical partitions.
+fdisk /dev/nvme0n1
+p        # View partition table
+n        # Create partition
+e        # Extended partition (if prompted)
+# Choose partition number and size
+n        # Create logical partition
+# Select logical partition 5, size +1G
+w        # Save
+Never format or mount the extended partition itself. Format the logical partition.
+partprobe /dev/nvme0n1
+mkfs.xfs /dev/nvme0n1p5
+mkdir -p /data1
+mount /dev/nvme0n1p5 /data1
+Add to /etc/fstab:
+/dev/nvme0n1p5 /data1 xfs defaults 0 0
+systemctl daemon-reload
+mount -a
+df -hT
+3. Increase Swap Space Using a Partition
+Create the Swap Partition
+free -h
+fdisk /dev/nvme0n1
+n        # New partition
+# Set the partition size
+t        # Change partition type
+# Select the partition number
+82       # Linux swap (MBR only; legacy fdisk)
+w        # Save
+Note: On GPT, use the Linux swap type instead of MBR code 82.
+Initialize and Enable Swap
+partprobe /dev/nvme0n1
+mkswap /dev/nvme0n1p7
+vim /etc/fstab
+Add:
+/dev/nvme0n1p7 none swap defaults 0 0
+Enable and verify:
+systemctl daemon-reload
+swapon -a
+swapon --show
+free -h
+Remove the Swap Partition
+swapoff /dev/nvme0n1p7
+vim /etc/fstab    # Remove the swap entry
+fdisk /dev/nvme0n1
+p                 # Verify partition number
+d                 # Delete the swap partition
+w
+partprobe /dev/nvme0n1
+4. LVM (Logical Volume Management)
+Create an LVM Partition
+fdisk /dev/nvme0n1
+n        # Create partition
+t        # Change partition type
+# Select partition number
+# Set type to Linux LVM (8e for MBR)
+w        # Save
+For GPT, select the Linux LVM partition type instead of using MBR code 8e.
+partprobe /dev/nvme0n1
+lsblk
+Create Physical Volume (PV)
+pvcreate /dev/nvme0n1p7
+pvs
+Create Volume Group (VG)
+vgcreate -s 8M nats_vg /dev/nvme0n1p7
+vgs
+-s 8M sets the physical extent size to 8 MiB.
+Create Logical Volumes (LV)
+lvcreate -L 595M -n lv00 nats_vg
+lvcreate -l 30 -n lv01 nats_vg
+lvs
+* -L 595M: Specify the LV size.
+* -l 30: Specify the number of extents (30 × 8 MiB = 240 MiB).
+Format and Mount Logical Volumes
+mkfs.ext4 /dev/nats_vg/lv00
+mkfs.ext4 /dev/nats_vg/lv01
+
+
+mkdir -p /lvm1 /lvm2
+mount /dev/nats_vg/lv00 /lvm1
+mount /dev/nats_vg/lv01 /lvm2
+Add to /etc/fstab:
+/dev/nats_vg/lv00 /lvm1 ext4 defaults 0 0
+/dev/nats_vg/lv01 /lvm2 ext4 defaults 0 0
+Verify:
+systemctl daemon-reload
+mount -a
+df -hT
+lvs
+vgs
+pvs
+Remove LVMs
+Warning: Removing logical volumes permanently destroys their data. Back up any required files first.
+umount /lvm1
+umount /lvm2
+vim /etc/fstab    # Remove both entries
+systemctl daemon-reload
+
+
+lvremove /dev/nats_vg/lv00
+lvremove /dev/nats_vg/lv01
+vgremove nats_vg
+pvremove /dev/nvme0n1p7
+Finally, remove the partition if required:
+fdisk /dev/nvme0n1
+p        # Verify partition number
+d        # Delete the LVM partition
+w        # Save
+partprobe /dev/nvme0n1
+lsblk
+Important: Use the correct partition number throughout. Do not delete a partition that contains other required data or active storage.
