@@ -1,0 +1,142 @@
+﻿1. Static ip config
+Win+r --> ncpa.cpl --> select interface --> right-click --> properties --> IPv4 --> properties -->
+Ip: 192.168.37.128
+Gw: 192.168.37.2
+Pri DNS: 192.168.37.128
+Sec DNS: 192.168.37.2
+
+
+2. Assign admin privileges: add that user as a primary or secondary member of the “Administrators” group.
+
+
+3.  Create new user:
+Server manager --> tools --> computer management --> right-click on Users --> under Local Users & Groups --> select New User
+
+
+4. Install DNS:
+1. Server manager --> add roles & features --> next ----------> DNS Server box --> checkbox restart --> install
+2. FORWARD ZONE: Open dns manager --> right-click machine’s name --> new zone --> primary zone --> Forward --> provide name --> provide filename --> do not allow dynamic updates --> finish
+3. CREATE A RECORDS: go to forward lookup zone --> select DNS --> right-click --> new host A or AAAA --> ip addr --> finish
+4. REVERSE ZONE: Open dns manager --> right-click machine’s name --> new zone --> primary zone --> Reverse --> IPv4 --> provide network ip --> provide filename --> do not allow dynamic updates --> finish
+5. CREATE PTR RECORD: go to reverse lookup zone --> select filename --> right-click --> new pointer PTR --> host ip 192.168.37.128 --> hostname master.itiss.com. (dot at the end)
+6. Verify: cmd --> # nslookup itiss.com         # nslookup master.itiss.com
+
+
+5. ADDS:
+1. Server manager --> add roles & features --> Active Directory Domain Service --> enable restart --> install
+2. Click on ADDS --> yellow warning “more” click --> promote this server to domain... --> add new forest --> add domain name --> select ‘forest functional level” & “Domain functional level” as Windows Server 2022 --> set password --> select/enable DNS --> (if no parent zone, then skip, do not select anything) --> next --> workgroup/netBIOS name --> next --> install --> restart
+3. JOINING Domain Controller (DC)
+ON SERVER creating SRV RECORD: dns manager --> administrative tools --> dns --> forward lookup zones --> right-click your domain --> new domain --> _msdcs --> right-click _msdcs --> new domain --> dc --> right-click dc --> Other new records --> add SRV record --> create record --> Service: _ldap --> protocol: _tcp --> ... --> port no: 389 --> host: itiss.com. (dot at the end) --> done
+4. ON CLIENT (needs ip): settings --> system --> about --> Advanced settings --> computer name --> change --> itiss.com --> ok --> username, password --> restart --> done
+
+
+5. CREATING OUs
+Server manager --> tools --> Active dir Users and Comp --> right-click domain controllers --> new --> Organizational Units (OU) --> name --> enable "protect..." --> ok --> add users or OUs.
+{if want to delete the protected OU, view --> Advanced features --> right-click OU --> properties --> object tab --> uncheck "protect..." --> delete
+6. ON CLIENT: install ADUC
+In powershell: --> 
+# Add-WindowsCapability -Online -Name "Rsat.ActiveDirectory.DS-LDS.Tools~~~~0.0.1.0"
+
+
+6. GPO
+1. ON SERVER:
+Create a folder --> share it to domain users with Read-Only --> add wallpaper image --> note network path --> make sure it is accessible on client (win+r --> type network path)
+
+
+Win+r --> gpmc.msc --> right-click domain --> create a GPO ... --> right-click on new GPO --> edit --> User Config --> Policies --> Administrative Templates --> Desktop --> Desktop --> Desktop Wallpaper --> double click "Desktop wallpaper" --> enabled --> enter the complete path of the image (till image.png) -->apply --> ok --> cmd # gpupdate /force (imp)
+
+
+2. ON CLIENT: logoff and login again
+
+
+3. To prevent user on client from changing wallpaper:
+Open gpmc_msc --> edit same gpo or create new --> user config --> Administrator templates --> control panel --> personalization --> double-click prevent changing desktop background --> enabled --> apply ok -->cmd # gpupdate /force
+
+
+4. To block control panel: 
+Open gpmc_msc --> edit same gpo or create new --> user config --> Administrator templates --> control panel --> prohibit access to control panel.... --> enabled --> # gpupdate /force
+5. Password Policy:
+Open gpmc_msc --> edit same gpo or create new --> windows settings --> security settings --> account policies --> password policy --> min length = 8 --> complexity ... --> enabled --> ... done
+
+
+7. IIS
+Server manager --> add roles --> Web Server IIS --> Basic Authentication --> enable restart --> install 
+1. Dedicated Web Hosting (default website)
+Server manager --> tools --> IIS manager --> explore = document root --> bindings = port & ip address --> view virtual directories (to create alias) --> add virtual directory --> alias name --> path where website is stored
+2. Virtual Web Hosting
+Server manager --> IIS manager --> right-click Sites --> Add website --> give site name --> physical path --> FQDN --> ok --> create a html file for newly added website.
+3. Basic Auth: 
+Tools --> Services --> restart World Wide Web... --> create a folder to set basic auth --> right-click --> properties --> security --> edit --> add --> natasha --> full perm --> apply ok
+IIS manager --> under your website --> enable Authentication --> enable Basic --> disable Anon.
+
+
+8. FTP
+Server manager --> add roles --> under IIS --> FTP --> FTP Server and FTP Service --> install
+1. Configure: 
+Add a local group and a local user to that group you want to allow to use FTP site --> create a physical folder --> IIS manager --> right-click sites --> add FTP-site --> name --> path (folder) --> binding = your ip --> no ssl --> next --> basic -->specified users --> username --> Read & Write
+Done
+FTP Firewall Support: external ip = domain ip --> apply
+2. ON CLIENT: 
+win+e --> top url part --> ftp://192.168.37.128<server ip> --> username, password of that user
+3. If didnt work...
+Disable existing inbound rules for ftp 1. FTP server (Traffic in) and 2. FTP server Passive -->
+Add new rules --> tools --> windows adv firewall defender... -->inbound rules --> add new rule --> port --> 21 --> allow the connection... --> name --> done --> 2nd rule --> port range 1025-65535
+--> allow connection
+8.1) FTP ISOLATION
+a)  
+9. DHCP
+Server manager --> add roles --> DHCP Server --> install
+1. Configure:
+Disable vmware dhcp --> server manager --> dhcp --> yellow warning "more" --> ad authorization (or skip if not an AD) --> commit 
+Server manager --> dhcp --> expand --> right-click IPv4 --> new scope --> next --> name --> ip pool --> exclusion (if any) --> lease --> "Yes" tp enable options config... (for gateway) --> add default gateway -->provide parent domain --> pri DNS --> sec DNS --> yes activate this scope.
+2. ON CLIENT:
+Win+r --> ncpa.cpl --> right-click interface --> properties --> ipv4 --> change from static to automatic --> apply
+10. NFS
+1. Server manager --> add roles --> File and Storage services --> File & iSCSI Services --> Server for NFS --> Client for NFS --> install
+
+
+
+
+2. TO ADD A NEW STORAGE TO VM --> vm settings --> add hard disk --> 10G --> done
+3. CREATE A PARTITION 
+Server manager --> tools --> computer management --> under storage --> disk management --> right-click Disk1 --> initialize disk --> MBR --> done
+4. Select unallocated space --> right-click --> new simple volume --> select entire or specific size --> name --> NTFS --> done
+
+
+5. Open file & storage services --> shares --> Tasks --> New share --> NFS Share-Quick --> select new drive --> type custom path --> browse --> new drive --> make a new folder --> select --> next --> provide alias name (nfs_alias) --> remote path = master:/nfs_alias --> no server authentication --> enable unmapped... --> allow unmapped... --> next --> add perm --> all machines --> Read/Write --> create
+6. ON CLIENT:
+File explorer -->network --> enable sharing 
+Win key --> search "features" --> "Windows features on or off" --> turn on --> Services for nfs --> CLient for NFS --> in network in file explorer you'll see your machine --> open --> on \nfs_alias --> map network drive
+OR using powershell
+# mount –t nfs 192.168.37.128:/nfs_alias /mnt
+
+
+11. DFS
+1. Server manager --> add roles --> File and Storage --> file & iSCSI --> DFS Namespace & DFS Replication --> install
+2. Create a shared physical folder --> share with Domain users R&W perm
+3. Open DFS Namespace Management Console --> right-click Namespaces --> New Namespace --> enter server name --> MASTER --> give Namespace name (dfs_ns) --> path = \\server_name\dir_name\dfs_ns
+4. Open \ \ master.itiss.com\dfs_ns --> Namespace server --> right-click Properties --> edit settings --> path = C:\dir_name\dfs_ns --> permissions (custom) --> domain users --> full control --> apply ok
+5. Select domain-based NS -->create --> done
+6. CREATE LINKS under Namespace:
+1. DFS management --> select your created NS --> New Folder --> name of link (folder) --> add target folders--> browse --> select folder --> done
+2. To perform replication group: create a new separate link for another folder.
+7. ON CLIENT:
+Win+r --> \\itiss.com \dfs_ns
+12. Windows Backup Server
+1. Need a separate machine as backup server --> need to be in same n/w --> need to share some storage in R/W form using NFS/DFS/Regular file sharing
+2. Server manager --> roles --> next --> in features --> Windows Server Backup --> install
+3. Server manager --> tools --> Windows Server Backup --> Pick “Backup once” --> custom --> specify destination --> remote --> shared folder --> provide destination location (path = \\WIN_CLIENT\backup_server) --> inherit
+4. RECOVERY: 
+Server manager --> tools --> Windows server backup --> right-click --> Recover --> select location of backup stored --> select another location --> remote shared folder --> provide destination path --> date & time --> items to recover --> specify recover location...... done
+
+
+13. FSRM (File Server Resource Management)
+1. Server manager --> add roles --> file server resource management --> install
+2. Tools --> File server resource manager --> expand “File Screening Management” --> right-click File Screens --> create file screen --> path of already shared folder --> choose policy --> create
+14. NIC Teaming
+1. Add one more NIC in VM
+Settings --> add --> Network Adapter --> finish --> refresh server manager
+2. Old ethernet change from static to dhcp --> new ethernet to dhcp --> 
+virtual nic (team) = ip address of old eth adapter and dns
+3. NIC Teaming --> click “Disabled” --> Tasks --> New Team --> Switch Independent --> Address Hash --> select both interfaces
+4. Refresh server manager --> give static ip to vNIC (ncpa.cpl)
