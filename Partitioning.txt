@@ -1,0 +1,96 @@
+﻿Partitioning
+
+
+-first keep in mind this flow:-
+1:- /dev/nvme0n1xxxxxx(extended)
+2:- Physical volume
+3:- volume group
+4:- lvm
+
+
+First check the partition table by # fdisk -l
+
+
+Now we open utility of /nvme0n1 
+# fdisk /dev/nvme0n1
+# p - check partition table
+# n - create new partition
+# e - new extended partition( direct enter dont give any number)
+Again we will hit enter as we want complete space as extended.
+-Now we create physical volumes by still staying in the fdisk.
+-creating a physical volume now.
+# n (new physical volume)
+# 5 select the partition mainly 5
+Enter on starting sector
+Select space for physical volume required.
+# t change the type 
+# 8e change to lvm
+# w this will save the complete config we did
+# partprobe /dev/nvme0n1
+Now we create physical volume which you can check that has not yet created.
+# pvs (to display in short) or # pvdisplay (to display in detail)
+This commands will show any volume groups if available.
+# pvcreate /dev/nvme0n1p5
+Now we can run the same command as we did earlier and we will get to see the volume created in # pvs. 
+Now we create Volume group and give a name to it.
+To check already present VG’s we run command # vgs or # vgdisplay
+There are 2 ways 1 is with default block size and second custom block size.
+1:- # vgcreate itiss /dev/nvme0n1p5 (default block size of 4MB)
+2:- # vgcreate -s 8M itiss /dev/nvme0n1p5 (-s (custom size) 8M(per block size) )
+Run and check if vg is created # vgs
+Now there are 2 ways to create lvm.
+1 specifying the memory required
+2 specifying number of blocks based on per block size we know.
+
+
+1:- lvcreate -L +100M -n lv00 itiss [-L(based on size) -n (new partition) lv00(name of new lvm) itiss (parent volume group)]
+
+
+2:- lvcreate -l 13 -n lv00 itiss [-l (based on no of blocks)]
+# mkfs.ext4 /dev/itiss/lv00 (to format in ext4 format)
+# mkdir /lvm1 (directlory to mount the lvm on)
+# vim /etc/fstab (edit fstab settings)
+Go to end and these lines
+/dev/itiss/lv00        /lvm1        ext4        defaults        0 0
+
+
+Save and then run # systemctl daemon-reload
+# mount -a
+# df -hT
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+To create swap follow steps
+Make sure we have extended partition created as linux lvm
+# free -mh (check current swap memory)
+# fdisk /dev/nvme0n1
+# n
+# enter
+# +1G (if 1 gb is required)
+# t
+# 82 (for type to be swap)
+# w
+# partprobe /dev/nvme0n1
+# mkswap /dev/nvme0n1p6 (if the swap is p6)
+# vim /etc/fstab
+Go to end and add these lines
+/dev/nvme0n1p6        none        swap        defaults 0 0
+Save and quit
+
+
+# systemctl daemon-reload
+# swapon -a
+
+
+Run # free -mh to check the updated swap memory
