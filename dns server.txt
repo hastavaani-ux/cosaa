@@ -1,0 +1,22 @@
+﻿Install dns server
+Now change the name of the machine.
+
+Go to server manager -> local server -> now click on computer name -> change -> keep computer master -> now click on more ->  itiss.com and then click on ok -> keep workgroup as it is and then ok.
+
+
+Click on tools -> DNS -> right click forward zone -> new zone -> new host -> keep name blank -> enter ip of server. 
+Again right click on forward zone and enter master and then ip and save.
+
+
+Now go to reverse zone and create a PTR record.
+
+
+Now add roles as active directory domain service
+Now get back to server manager and then go to adds you will see a warning to promote the server to domain server click on that.
+
+
+Add new forest and enter itiss.com
+Next next .. and direct install
+
+
+Now after this the pc will restart

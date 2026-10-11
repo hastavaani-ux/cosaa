@@ -1,0 +1,28 @@
+﻿SSH setup in windows server and access on linux machine
+
+
+In server machine first lets install ssh server go to power shell as administrator
+# dism /online /Add-Capability /CapabilityName:OpenSSH.Server~~~~0.0.1.0
+
+
+Now go to services and start the OpenSSH Server.
+
+Now go to client machine and in terminal make sure that ssh service is downloaded
+For linux # dnf install openssh -y
+User must be from users and groups any and server machine ip
+
+
+# ssh user1@192.168.37.100
+
+
+We can also use scp in windows to share data 
+# scp sourcefile user@192.168.37.100 destination_path
+
+
+To allow specific group users to access ssh.
+C:\ProgramData\ssh\sshd_config  go to this path and add these lines
+AllowUsers localuser1 localuser2
+AllowGroups Administrators Domain\x20Admins SSH_Allowed_Users
+
+
+After saving we must restart the ssh service in the services tab.

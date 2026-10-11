@@ -1,0 +1,94 @@
+﻿In Windows to setup gpo we have to first take care of static ip, dns and compter name as well.
+
+
+1:- setup static ip
+2:- Set time zone properly so that same time is displayed on both the pc.
+3:- install ADDS and promote the adds dc to addc
+4:- Dns record must be setup properly and in dns there is also one part after forward zone is created follow given steps:-
+* Expand forward lookup zone inside right click and create a new domain named “_msdcs” -> Right click on _msdcs and new domain named “dc” -> right click and new record and select SRV -> select _ldap in service and click next and select host as “itiss.com.”
+4:- change pc name from server manager -> local server -> change computer name to master.itiss.com
+
+
+5:- make sure all the given above is as required and set the static ip on this user’s pc as well then go to client pc and -> system -> about -> advanced setting-> change the domain to itiss and try the Administrator and password.
+
+
+6:- to set the gpo in the search bar on server machine type group policy and enter and now we can create policies.
+
+
+___________________IIS___________
+Add web server IIS and install
+There will be a folder inetpub -> wwwroot-> create a folder named dedicated -> create a index.html inside this folder.
+Go to iis manager -> open the folder until it shows sites -> right click on sites folder and click on add new website.
+Sitename- anything
+Physical path- browse and give path of dedicated folder created
+Host name whatever you have in dns mine is master.itiss.com
+Rest other as it is
+Now click on next 
+Now go that site in iis manager and then open document root option and make sure you add the same name as you have given the html file (for eg:- index.html) if it is index.html shift it to the top.
+
+
+
+
+For virtual hosting it is simple.
+-create a folder inside the inetpub directly with any name and one index.html page inside it.
+- go to iis manager create new site with same steps as earlier and make sure that you give path of the new folder that you created.
+- go to dns manager and add new forward lookup zone for this website and inside that dont forget to create new a record for the website.
+- and just like that it must be hosted.
+
+
+For basic auth -> add roles and features -> webserver -> webserver -> security ->basic auth and install.
+After this you just have to go to iis manager and whatever website you want to give basic auth click on that website and in authentication select basic and enable it and disable other auths. Now restart and start the website and login with any users.
+
+
+
+
+—-----------------ftp—--------------
+
+
+Install ftp from webserver iiis -> FTP server
+Now first close iis manager if already open and open it again and when you right click on sites folder click to add ftp site. 
+New name for the site 
+Physical path must be c:\inetpub\ftproot\
+Now select the ip address of the machine.
+No SSL, NEXT
+Auth whatever is required as per question. Do it and next.
+Now restart the ftp services and go to client and in the file manager ftp://192.168,37.100/
+
+
+__________nfs________________
+
+
+Go to add roles and open file storage  services -> file and iscsi -> server for nfs.
+And in features select Client for nfs.
+Go to file and storage in server manager.
+Shares -> tasks -> new share -> nfs quick -> select the path.
+No server auth - enable unmapped users.
+Allow root access - all machines - select the permission.
+Go to client machine and directly try to map the drive by right click on this pc in windows explorer and map the drive \\master\nfsshare\ (if domain is master.itiss.com and nfs share name nfsshare)
+
+
+__________DFS___________
+Add roles and features file and storage -> file and iscsi -> DFS namespace and dfs replication
+Create 2 or whatever number of folders in wherever location on your server pc to share.
+And then right click and share this folder from properties advanced sharing to domain users with whatever permissions.
+Now go to dfs management.-> namespace-> new name space.
+Namespace sever must be “master” or whatever you have given.
+Now name of the namespacename that is anything i wil give dfs. Click on edit settings and set the permission for whatever is given for now i will customize and give domain users complete control.and next
+Select standalone namespace. And next and create.
+Now once back to dfs management click on the namespace just created and then  new folder option on right panel. And give any name and select first shared folder from add.
+And add second folder again from new folder with its path.
+Now go to client machine and in navigation bar \\master\dfs\
+You will get both the folder paths inside it.
+
+
+
+
+___________DHCP_____________
+
+
+Add roles and features select dhcp server.
+Make sure dhcp in the network editor on your vm is disabled or it will give the ip to system.
+Go to dhcp option on server manager there will be a warning complete that and go through domain option that it is giving us.
+Now go to dhcp management.
+Open the ipv4 option and then right click on ipv4 and new scope now give any name.
+Start and end ip like 37.150 till 37.160 nd then next next and make sure you give the router and other address i did my part now just next next with the addresses bro. God help you and once done go back on that page of dhcp management where it shows ipv4 and then right click on master.itiss.com and then tasks and restart and then check the other client pc which is in network and then keep the ip on auto and it will get the ip from this server pc.

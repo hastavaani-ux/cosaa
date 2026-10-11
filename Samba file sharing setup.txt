@@ -1,0 +1,102 @@
+﻿Samba file sharing setup
+
+
+#firewall-cmd –add-service=samba –permanent
+#firewall-cmd –reload
+#setenforce 0
+
+
+#dnf install samba samba-common samba-client -y
+# mkdir /admin
+# touch /admin/file{1..10}.txt
+# chown -R nobody:nobody /admin
+# chmod -R 755 /admin
+# vim /etc/samba/smb.conf
+Go to the end of file and add:
+[admin]
+        path = /admin
+        browsable = Yes
+        writable = Yes
+        guest ok = Yes
+        read only = No
+
+
+Run # testparm command to check for any error in file
+If it shows:
+Load smb config files from /etc/samba/smb.conf
+Loaded services file OK.
+
+We are good to go.
+
+
+# systemctl restart smb nmb
+# systemctl enable smb nmb
+
+
+# smbpasswd -a root
+Now enter the password twice whatever we want to set
+# smbpasswd -e root
+This will enable root
+
+
+Go on client machine now
+
+
+# dnf install samba-client -y
+
+
+# smbclient //192.168.37.100/admin
+smb> ls
+Now it will list the files
+
+
+
+
+
+
+
+
+
+
+
+
+Mounting samba with shared directory on client 
+# groupadd smb-group
+# useradd -G smb-group smbuser
+# smbpasswd -a smbuser
+# chmod -R 770 /admin
+# chown -R root:smb-group /admin
+
+
+Edit the given lines in # vim /etc/samba/cmb/conf
+[admin]
+        path = /admin
+        valid users = @smb-group
+        browsable = Yes
+        writable = No
+        guest ok = No
+
+
+# systemctl restart smb nmb
+
+
+Now go on client assuming you have done the old part of samba client in this text file
+# smbclient //192.168.37.100/admin -U smbuser
+
+
+Permanent mount
+Install cifs
+# dnf install cifs-utils -y
+# mkdir -p /mnt/smbshare
+# vim /etc/fstab
+Add the given line
+//192.168.37.100/admin /mnt/smbshare cifs defaults,username=smbuser,password=root 0 0
+Save and quit
+# systemctl daemon-reload
+#mount -a 
+To check run # df -h
+
+On windows if want to check
+Open run # windows + R
+# \\192.168.37.100\admin
+Username and password and it will login

@@ -1,0 +1,37 @@
+﻿Job scheduling using crontab and service name crond
+This we dont have to install it is already in our centos
+
+
+First keep these format in mind
+minute(0-59)        hour(0-24)        date(1-31)        month(1-12)        day(0-6 {0-sunday}) full path of command
+
+
+To configure job 
+# crontab -e
+
+
+Write the command
+03        07        16        09        03        mkdir        /home/itiss/autodir
+
+
+Now save and quit
+# systemctl restart crond
+# systemctl enable crond
+
+
+
+
+We as root can also create job for other user
+# crontab -e -u natasha
+
+
+If natasha will login and check for # crontab -e she will be able to see that job
+
+
+To deny or allow users we can edit the name in the file
+# vim /etc/cron.deny        or        #vim /etc/cron.allow
+If we use deny file all the other users other than the ones in the deny will get access and vice-versa in allow.
+
+
+To schedule a job lets say for everyday 
+00        12        *        *        *        echo “its the time”

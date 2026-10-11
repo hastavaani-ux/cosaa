@@ -1,0 +1,90 @@
+﻿Dns Server
+#dnf install bind bind-utils -y
+#firewall-cmd –add-service=dns –permanent
+#firewall-cmd –reload
+
+
+
+
+
+
+#nmtui
+> edit connection
+We setup ip and hostname over here
+Ipv4 :- 192.168.37.100
+Gw :- 192.168.37.2
+Dns1:- 192.168.37.100
+Dns2:- 192.168.37.2
+Search Domain:- itiss.com
+Save and go back to main page > activate a connection 
+Deactivate and active the connection 
+Go back to hostname and set it to hello.itiss.com
+
+
+
+
+
+
+#vim /etc/named.conf
+1: on line listen-on port 53 { 192.168.37.100; }
+2: comment line #listen-on-v6
+3: allow-query     { any; }; it must not be localhost
+4: go to the end and add 2 zones at the bottom of the file
+
+
+zone "itiss.com" IN {
+        type master;
+        file "for.itiss.com";
+};
+
+
+zone "37.168.192.in-addr.arpa" IN {
+        type master;
+        file "rev.itiss.com";
+};
+
+
+
+
+
+
+#cd /var/named/
+#cp -arfv named.localhost for.itiss.com
+Now edit the file
+
+
+$TTL 1D
+@        IN SOA        hello.itiss.com.  any@gmail.com (
+                                        0        ; serial
+                                        1D        ; refresh
+                                        1H        ; retry
+                                        1W        ; expire
+                                        3H )        ; minimum
+                IN        NS        hello.itiss.com.
+hello                IN        A        192.168.37.100
+itiss.com.        IN        A        192.168.37.100
+
+
+Now save and quit
+
+
+Now copy the forward file and create a reverse file and edit it 
+
+
+#cp -arfv for.itiss.com rev.itiss.com
+Now edit the reverse file
+
+
+$TTL 1D
+@        IN SOA        hello.itiss.com.  any@gmail.com (
+                                        0        ; serial
+                                        1D        ; refresh
+                                        1H        ; retry
+                                        1W        ; expire
+                                        3H )        ; minimum
+                IN        NS        hello.itiss.com.
+100                IN        PTR        hello.itiss.com
+
+
+#systemctl restart named
+#systemctl enable named

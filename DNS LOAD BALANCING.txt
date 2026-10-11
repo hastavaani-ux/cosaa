@@ -1,0 +1,259 @@
+﻿DNS LOAD BALANCING:
+
+
+
+
+SERVER M/C IP:192.168.37.129/24
+CLIENT'IP:    192.168.37.128/24
+
+
+
+
+
+
+INSTALL httpd ON BOTH MACHINE
+(dnf install httpd -y)
+
+
+
+
+ON SERVER M/C:
+1) DO BIND DNS
+#nmtui
+
+
+address: 192.168.37.129/24
+gw:192.168.37.2
+dns server: 192.168.37.129
+                       128
+                         2
+domain name: cdac.com
+host name: master.cdac.com
+
+
+2) configuration file
+
+
+#vim /etc/named.conf
+listen on port 50 {server's ip}
+# (comment next line)
+
+
+
+
+
+
+
+
+allow any {any;};
+
+
+
+
+zone "cdac.com" IN {
+        type master;
+        file "for.cdac.com";
+};
+zone "37.168.192.in-addr.arpa" IN {
+        type master;
+        file "rev.cdac.com"
+};
+
+
+3)CREATE DNS RECORD:
+#cd /var/www/named
+#cp -arfv named.localhost for.cdac.com
+
+
+@                IN        NS        master.cdac.com. any@gmail.com.
+master                IN        A        192.168.37.129
+cdac.com.        IN        A                   129
+slave                IN        A                  128
+:wq
+
+
+#cp -arfv named.localhost rev.cdac.com
+
+
+@--------------same------------
+        IN NS master.cdac.com
+129        IN PTR master.cdac.com
+128        IN PTR master.cdac.com
+:wq
+
+
+4) Allow firewall 
+#firewall-cmd --add-services=dnf --permanent
+#firewall-------------------=httpd ---------
+#firewall-cmd --reload
+
+
+
+
+5) START named SERVICE:
+#systemctl restart named
+#systemctl enable named
+
+
+
+
+ON CLIENT'S M/C:(.128/24)
+#dnf install curl -y
+#dnf install httpd -y
+#dnf install bind bind-utils -y
+#vim /etc/named.conf
+listen
+#
+allow
+allow any {any;};
+
+
+
+
+zone "cdac.com" IN {
+        type slave;
+        file "slaves/for.cdac.com";
+        masters { 192.168.37.29; };
+};
+zone "37.168.192.in-addr.arpa" IN {
+        type slave;
+        file "slaves/rev.cdac.com"
+        masters { 192.168.37.129; };
+};
+:wq
+6) Add Firewall port same as on server's
+7) verify:    curl http://master.cdac.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+VSFTP:
+
+
+-->on server:
+
+
+#dnf install vsftpd -y
+#cd /var/ftp/pub
+#touch file{1..10}.txt
+#vim /etc/vsftpd/vsftpd.conf
+
+
+{go to line 12 anonymous_enable = YES)
+
+
+-->Start the service:
+systemctl restart vsftpd
+          enable
+          is-active
+          is-enabled
+ 
+--> FIREWALL:
+firewall-cmd --add-services=ftp --permanent
+             --reload
+
+
+-->ON CLIENT
+
+
+#dnf install ftp -y
+#ftp 192.168.37.129   (server's ip)
+username:ftp
+password: hit enter
+
+
+#ls to show output
+ 
+
+
+
+
+
+
+POSTFIX MAIL SERVER (smtp):
+
+
+# dnf install postfix -y
+# vim /etc/postfix/main.cf
+
+
+go to line
+94 myhostname = master.itiss.com (add ur FQDN)
+102 uncomment it, add ur domain
+118 uncomment it
+132 uncomment
+135 comment
+183 comment
+184 uncomment
+283 add ur network range 192.168.37.0/24;
+wq
+#systemctl restart postfix
+#          enable         
+#firewall-cmd --add-service=smtp --permanent
+#firewall-cmd --reload
+#cd /var/spool/mail/
+#touch root
+# dnf install mutt -y
+--> create 2 terminal & run MUTT cmd on both
+# mutt  (compose mail from root to another terminal & press "m" to compose mail ater composing press "y" to send)
+--> go to other terminal and switch to user to whom u send the mail
+
+
+#mutt
+mail received
+
+
+
+
+
+
+
+
+NFS:
+
+
+
+
+# dnf install nfs-utils -y
+# mkdir /data
+# touch /data/file{1..10}.txt
+# chmod 770 /data -R
+# vim /etc/exports
+  /data 192.168.37.0/24(rw,sync,no_root_squash,no_subtree_check)
+# systemctl restart nfs-server
+#           status            
+# exportfs -a
+# firewall-cmd --add-service=nfs --permanent
+#---------------------------=mountd -------
+#---------------------------=rpc-bind ------
+# reload
+
+
+CLIENT MACHINE
+# dnf install nfs-utils -y
+# firewall-cmd --add-service=nfs --permanent
+#---------------------------=mountd -------
+#---------------------------=rpc-bind ------
+#reload
+#systemctl restart nfs-server
+
+
+TEMPORARY MOUNT
+#mount -t nfs server'ip:/data /mnt
+#df -h
+Permanent mount
+#vim /etc/fstab
+server's ip:/data /mnt nfs default 0 0
+:wq
+#mount -a
+#df -h

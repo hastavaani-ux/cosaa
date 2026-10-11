@@ -1,0 +1,33 @@
+﻿On server side
+#dnf install vsftpd -y
+#firewall-cmd –add-service=ftp –permanent
+#firewall-cmd –reload
+
+
+Create files in public access zone
+#touch /var/ftp/pub/file{1..10}.txt
+
+
+
+
+Enabling anonymous login
+#vim /etc/vsftpd/vsftpd.conf
+Go to line
+anonymous-enable=NO (Change the NO to YES)
+
+
+
+
+#systemctl restart vsftpd
+#systemctl enable vsftpd
+
+
+
+
+On client side
+#dnf install ftp -y
+#ftp 192.168.37.100
+
+
+Now the username for anonymous user is ftp and no password just enter
+You can also login with user details and it will take you to users home directory

@@ -1,0 +1,43 @@
+﻿NTP (Network Time Protocol)
+# firewall-cmd –add-service=ntp –permanent
+# firewall-cmd –reload
+# dnf install chrony -y
+
+
+Open browser and go to https://www.pool.ntp.prg/zone/in
+
+
+Now copy server path of any one or mutiple
+
+
+# vim /etc/chrony.conf
+
+
+On 3rd line replace the pool with given
+
+
+server 0.in.pool.ntp.org iburst
+
+
+On line 23 uncomment line and write the network address
+
+
+allow 192.168.37.0/24
+
+
+# systemctl restart chronyd
+# systemctl enable chronyd
+
+
+On client machine
+
+
+# dnf install chrony -y
+# vim /etc/chrony.conf
+Only add server ip with iburst
+Server 192.168.37.100 iburst
+
+
+To check in server machine
+# chronyc sources
+# chronyc clients

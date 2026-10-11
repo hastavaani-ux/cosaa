@@ -1,0 +1,169 @@
+﻿Make sure you have done dns server configuration for proceeding with virtual hosting.
+Lets just assume you have only configured nmtui with ip of machine as 192.168.37.100
+Make sure bind and httpd is installed.
+
+
+#firewall-cmd –add-service={dns,http} –permanent
+#firewall-cmd –reload
+#setenforce 0
+
+
+Go to #vim /etc/named.conf (add the given at end of line)
+zone "itiss.com" IN {
+        type master;
+        file "for.itiss.com";
+};
+
+
+zone "37.168.192.in-addr.arpa" IN {
+        type master;
+        file "rev.itiss.com";
+};
+
+
+zone "cdac.com" IN {
+        type master;
+        file "for.cdac.com";
+};
+
+
+
+
+Now we need to create forward and reverse zones
+#cd /var/named
+
+
+#cp -arfv named.localhost for.itiss.com
+#vim for.itiss.com 
+$TTL 1D
+@       IN SOA  www.itiss.com.  any@gmail.com (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+                        IN      NS      www.itiss.com.
+www                     IN      A       192.168.37.100
+itiss.com.    IN      A       192.168.37.100
+
+
+
+
+Now copy for.itiss.com and create copy for for.cdac.com
+#cp -arfv for.itiss.com for.cdac.com 
+#vim for.cdac.com (in this file and any future files the SOA and NS will be same dont change it )
+$TTL 1D
+@       IN SOA  www.itiss.com.  any@gmail.com (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+                        IN      NS      www.itiss.com.
+hello                    IN      A       192.168.37.100
+cdac.com.    IN      A       192.168.37.100
+
+
+Now we create reverse pointer file
+#cp -arfv for.itiss.com rev.itiss.com
+#vim rev.itiss.com
+$TTL 1D
+@       IN SOA  www.itiss.com.  any@gmail.com (
+                                        0       ; serial
+                                        1D      ; refresh
+                                        1H      ; retry
+                                        1W      ; expire
+                                        3H )    ; minimum
+                        IN      NS      www.itiss.com.
+100                    IN      PTR       www.itiss.com
+
+
+Now we restart named and check if or host is resolving to ip or not
+#systemctl restart named
+#host -t a itiss.com
+And check other websites like this
+
+
+
+
+Now we manage apache server
+#vim /etc/httpd/conf.d/userdir.conf
+1: Now go to the line userDir Disabled and comment it with a #
+2: go a bit below and uncomment the line saying #UserDir public_html
+Now save and quit this will enable user directory use.
+
+
+
+
+Create user and directory and give permissions
+
+
+#useradd itiss
+#chmod 711 /home/itiss
+#mkdir /home/itiss/public_html
+#chmod 755 /home/itiss/public_html
+#cat > /home/itiss/public_html/index.html
+Write 
+<h1> This is itiss.com</h1> 
+And now press ctrl+c
+#chown itiss:itiss /home/itiss/public_html -R
+#chmod 644 /home/itiss/public_html/index.html
+(create this same directory for cdac user or you can name anything for that user)
+
+
+
+
+Now we need to create 2 directory 1 is sites-enabled and second is sites-available.
+This needs to be done only if you are told to do so if not then you can just write your conf files in /etc/httpd/conf.d/ folder directly for that yo can skip to create the <virtualhost *:80>
+
+
+#vim /etc/httpd/conf/httpd.conf
+Go to end of line and change 
+#IncludeOptional        conf.d/*.conf
+        To
+#IncludeOptional        sites-enabled/*.conf
+Now save and quit
+
+
+Create 2 directory 
+#mkdir /etc/httpd/{sites-available,sites-enabled}
+
+
+Now you can skip to this part if you are not doing that sites-available logic
+And create this in /etc/httpd/conf.d/ but i am demonstrating for sites available logic
+
+
+#cd /etc/httpd/sites-available/
+#vim itiss.conf
+<VirtualHost *:80>
+        ServerName itiss.com
+        ServerAlias www.itiss.com
+        DocumentRoot /home/itiss/public_html
+        ErrorLog /var/log/httpd/itiss_error_log
+        CustomLog /var/log/httpd/itiss_access_log combined
+        <Directory "/home/itiss/public_html" >
+                Options None
+                Require all granted
+        </Directory>
+</VirtualHost>
+
+
+Now copy this file and create same configuration with changes for cdac and once done we create symbolic link for this file in sites-enabled
+Assuming you are already in sites-available
+#ln -S itiss.conf /etc/httpd/sites-enabled/itiss.conf
+#ln -S cdac.conf /etc/httpd/sites-enabled/cdac.conf
+
+
+Now restart and enable named and httpd
+#systemctl restart named
+#systemctl restart httpd
+#systemctl enable named
+#systemctl enable httpd
+
+
+Now go on client machine and do the nmtui setup for ip
+Ip :- 192.168.37.101
+Gw:- 192.168.37.2
+Dns:- 192.168.37.100
+Dns2 :- 192.168.37.2
+No domain and anything now save and deactivate and activate the connection

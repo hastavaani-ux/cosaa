@@ -1,0 +1,52 @@
+﻿DHCP SERVER
+#firewall-cmd –add-service=dhcp –permanent
+#firewall-cmd –reload
+
+
+#dnf install dhcp-server -y
+
+
+#vim /etc/dhcp/dhcpd.conf
+Copy everything below and paste it in the file
+
+
+option domain-name "itiss.com";
+option domain-name-servers 192.168.37.100, 192.168.37.2;
+
+
+default-lease-time 600;
+max-lease-time 7200;
+
+
+authoritative;
+allow boot;
+
+
+subnet 192.168.37.0 netmask 255.255.255.0 {
+
+
+    range 192.168.37.150 192.168.37.200;
+
+
+    option routers 192.168.37.2;
+
+
+    option broadcast-address 192.168.37.255;
+}
+
+
+Save and quit
+
+
+#systemctl restart dhcpd
+#systemctl enable dhcpd
+
+
+
+
+Now go to client machine and in #nmtui make sure the port is set to automatic.
+Now turn the connection off and on and check the ip.
+
+
+To check leases
+#cat /var/lib/dhcpd/dhcpd.leases
