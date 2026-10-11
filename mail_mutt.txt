@@ -1,0 +1,46 @@
+﻿6. SMTP Server Configuration Using Postfix and Mutt
+Server Side
+1. Install Postfix
+dnf install postfix -y
+2. Configure Postfix
+vim /etc/postfix/main.cf
+Update the following parameters (line numbers may vary):
+myhostname = master.exting.com
+mydomain = exting.com
+myorigin = $mydomain
+inet_interfaces = all
+mydestination = mydomain, localhost, $mydomain
+mynetworks = 192.168.1.0/24, 127.0.0.0/8
+* Uncomment or update the required parameters.
+* Comment out conflicting duplicate entries.
+* Replace the domain and network range with your actual values.
+3. Enable and restart Postfix
+systemctl enable --now postfix
+systemctl restart postfix
+systemctl status postfix
+4. Allow SMTP through the firewall
+firewall-cmd --permanent --add-service=smtp
+firewall-cmd --reload
+Install Mutt
+dnf install mutt -y
+Send and Receive Emails Between Local Users
+1. Create users
+useradd user1
+passwd user1
+useradd user2
+passwd user2
+2. Send an email from user1 to user2
+su - user1
+echo "Test email from user1" | mail -s "SMTP Test" user2@exting.com
+Alternatively, using Mutt:
+mutt -s "SMTP Test" user2@exting.com
+Type the message, then press Ctrl+D to finish and send.
+3. Read email as user2
+su - user2
+mutt
+Select the received message to read it.
+Verify SMTP
+systemctl status postfix
+mailq
+journalctl -u postfix
+Note: This setup supports basic local-domain email delivery. For communication with external mail servers, configure DNS records (MX, A/PTR), a valid public IP, and appropriate mail security settings. Mutt is a mail client; Postfix handles mail delivery.
