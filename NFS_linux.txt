@@ -1,0 +1,41 @@
+﻿5. NFS Server Configuration (CentOS Stream 9)
+Server Side
+1. Install NFS utilities
+dnf install nfs-utils -y
+2. Create and set permissions
+mkdir -p /data
+chmod -R 770 /data
+3. Configure exports
+vim /etc/exports
+Add the following line (replace the network with your client network):
+/data 192.168.1.0/24(rw,sync,root_squash,no_subtree_check)
+* rw: Read and write access
+* sync: Write changes to storage before replying
+* root_squash: Maps remote root to an unprivileged user (recommended)
+* no_subtree_check: Disables subtree checking
+4. Export the directory
+exportfs -arv
+exportfs -v
+5. Enable and start NFS
+systemctl enable --now nfs-server
+6. Configure the firewall
+firewall-cmd --permanent --add-service=nfs
+firewall-cmd --permanent --add-service=mountd
+firewall-cmd --permanent --add-service=rpc-bind
+firewall-cmd --reload
+Client Side
+1. Install NFS utilities
+dnf install nfs-utils -y
+2. Create the mount point
+mkdir -p /mnt
+3. Mount the NFS share
+mount -t nfs 192.168.1.254:/data /mnt
+4. Verify
+df -hT
+mount | grep nfs
+5. Permanent mount (optional)
+Edit /etc/fstab:
+192.168.1.254:/data /mnt nfs defaults,_netdev 0 0
+Test:
+mount -a
+Note: Use 192.168.1.0/24 only if that is your actual client subnet. Avoid 0.0.0.0/0 and no_root_squash unless explicitly required in an isolated lab, as they can expose the share and grant excessive remote root privileges.
